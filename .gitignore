@@ -1,0 +1,68 @@
+
+# Python cache files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Secrets and environment variables
+.env
+.env.*
+!.env.example
+
+# React / Node.js / Vite
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Large datasets
+datasets/
+dataset/
+data/
+train/
+valid/
+test/
+
+# YOLO training outputs
+runs/
+wandb/
+
+# Trained model
+# Keep the model needed to run detection
+models/*
+!models/best.pt
+
+# Generated detection images
+results/*
+!results/.gitkeep
+
+# Temporary uploads
+uploads/
+temp/
+tmp/
+
+# Logs and local databases
+*.log
+*.sqlite
+*.sqlite3
+*.db
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+yolov8n.pt
