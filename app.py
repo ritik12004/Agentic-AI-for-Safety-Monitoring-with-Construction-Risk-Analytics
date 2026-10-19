@@ -2,12 +2,14 @@
 from pathlib import Path
 import shutil
 import uuid
-from fastapi.middleware.cors import CORSMiddleware
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from ultralytics import YOLO
-from risk_engine import calculate_site_risk
+
+from site_risk_agent import run_site_risk_agent
+
 
 app = FastAPI(title="Construction Site Safety Monitoring API")
 
@@ -42,12 +44,16 @@ def home():
 
 @app.post("/detect")
 async def detect_hazards(file: UploadFile = File(...)):
-    allowed_types = {"image/jpeg", "image/png", "image/webp"}
+    allowed_types = {
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+    }
 
     if file.content_type not in allowed_types:
         raise HTTPException(
             status_code=400,
-            detail="Please upload a JPG, PNG, or WEBP image."
+            detail="Please upload a JPG, PNG, or WEBP image.",
         )
 
     image_id = uuid.uuid4().hex
@@ -55,8 +61,10 @@ async def detect_hazards(file: UploadFile = File(...)):
 
     if extension not in {".jpg", ".jpeg", ".png", ".webp"}:
         extension = (
-            ".jpg" if file.content_type == "image/jpeg"
-            else ".png" if file.content_type == "image/png"
+            ".jpg"
+            if file.content_type == "image/jpeg"
+            else ".png"
+            if file.content_type == "image/png"
             else ".webp"
         )
 
@@ -70,7 +78,7 @@ async def detect_hazards(file: UploadFile = File(...)):
         predictions = model.predict(
             source=str(image_path),
             conf=0.25,
-            verbose=False
+            verbose=False,
         )
 
         result = predictions[0]
@@ -80,26 +88,31 @@ async def detect_hazards(file: UploadFile = File(...)):
 
         for box in result.boxes:
             class_id = int(box.cls[0].item())
+
             detections.append({
                 "class": model.names[class_id],
-                "confidence": round(float(box.conf[0].item()), 3)
+                "confidence": round(
+                    float(box.conf[0].item()), 3
+                ),
             })
 
-        # Calculate risk using detected objects
-        risk_analysis = calculate_site_risk(detections)
+        # Run the Site Risk Agent on YOLO detections.
+        agent_result = run_site_risk_agent(detections)
+        risk_analysis = agent_result["risk_analysis"]
 
         return {
             "image_id": image_id,
             "detections": detections,
             "count": len(detections),
             "risk_analysis": risk_analysis,
-            "result_image": f"/result/{image_id}"
+            "agent": agent_result,
+            "result_image": f"/result/{image_id}",
         }
 
     except Exception as exc:
         raise HTTPException(
             status_code=500,
-            detail=f"Detection failed: {str(exc)}"
+            detail=f"Detection failed: {str(exc)}",
         ) from exc
 
     finally:
@@ -111,7 +124,7 @@ def get_result(image_id: str):
     if not image_id.isalnum():
         raise HTTPException(
             status_code=400,
-            detail="Invalid image ID"
+            detail="Invalid image ID",
         )
 
     result_path = RESULT_DIR / f"{image_id}.jpg"
@@ -119,10 +132,11 @@ def get_result(image_id: str):
     if not result_path.is_file():
         raise HTTPException(
             status_code=404,
-            detail="Result image not found"
+            detail="Result image not found",
         )
 
     return FileResponse(
         result_path,
-        media_type="image/jpeg"
+        media_type="image/jpeg",
     )
+

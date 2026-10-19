@@ -39,7 +39,7 @@ runs/
 wandb/
 
 # Trained model
-# Keep the model needed to run detection
+# Keep the model required by the application
 models/*
 !models/best.pt
 
@@ -48,7 +48,8 @@ results/*
 !results/.gitkeep
 
 # Temporary uploads
-uploads/
+uploads/*
+!uploads/.gitkeep
 temp/
 tmp/
 
@@ -65,4 +66,5 @@ tmp/
 Thumbs.db
 desktop.ini
 
+# Other YOLO model weights
 yolov8n.pt
