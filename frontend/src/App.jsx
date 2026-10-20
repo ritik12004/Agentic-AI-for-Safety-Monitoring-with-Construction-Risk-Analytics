@@ -1,9 +1,8 @@
-
 import { useState } from "react";
 import "./App.css";
 
 // Group repeated findings without changing risk scoring.
-function groupFindings(findings) {
+function groupFindings(findings = []) {
   const grouped = {};
 
   findings.forEach((item) => {
@@ -18,7 +17,6 @@ function groupFindings(findings) {
     }
 
     grouped[key].count += 1;
-
     grouped[key].highestConfidence = Math.max(
       grouped[key].highestConfidence,
       item.confidence ?? 0
@@ -34,6 +32,10 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [rainfall, setRainfall] = useState("");
+  const [windSpeed, setWindSpeed] = useState("");
+  const [temperature, setTemperature] = useState("");
 
   function handleImageChange(event) {
     const file = event.target.files[0];
@@ -60,6 +62,18 @@ function App() {
       const formData = new FormData();
       formData.append("file", image);
 
+      if (rainfall.trim() !== "") {
+        formData.append("rainfall_mm", rainfall);
+      }
+
+      if (windSpeed.trim() !== "") {
+        formData.append("wind_speed_kmh", windSpeed);
+      }
+
+      if (temperature.trim() !== "") {
+        formData.append("temperature_c", temperature);
+      }
+
       const response = await fetch(
         "http://127.0.0.1:8000/detect",
         {
@@ -71,13 +85,17 @@ function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.detail || "Detection failed");
+        const detail = Array.isArray(data.detail)
+          ? data.detail.map((item) => item.msg).join(", ")
+          : data.detail;
+
+        throw new Error(detail || "Detection failed.");
       }
 
       setResult(data);
     } catch (err) {
       setError(
-        "Backend connect nahi hua. FastAPI server check karo. " +
+        "Analysis failed. Check that the FastAPI server is running. " +
           err.message
       );
     } finally {
@@ -86,8 +104,12 @@ function App() {
   }
 
   const groupedFindings = result
-    ? groupFindings(result.risk_analysis.findings)
+    ? groupFindings(result.risk_analysis?.findings)
     : [];
+
+  const agent = result?.agent;
+  const environmental = agent?.environmental_analysis;
+  const combinedRisk = agent?.combined_risk;
 
   return (
     <div className="app">
@@ -114,8 +136,8 @@ function App() {
 
           <p>
             Upload a construction site image to detect
-            objects and review a prototype site risk
-            assessment using our YOLO model.
+            objects and review prototype site and
+            environmental risk assessments.
           </p>
         </section>
 
@@ -150,16 +172,14 @@ function App() {
               {preview ? (
                 <img
                   src={preview}
-                  alt="Selected construction site"
+                  alt="Selected site"
                 />
               ) : (
                 <>
                   <span className="upload-icon">＋</span>
-
                   <strong>
                     Choose a construction site photo
                   </strong>
-
                   <span>JPG, PNG or WEBP</span>
                 </>
               )}
@@ -173,6 +193,54 @@ function App() {
 
             {image && <p>{image.name}</p>}
 
+            <h3>Environmental Conditions (Optional)</h3>
+
+            <p>
+              Enter available site measurements. Leave
+              unknown values blank.
+            </p>
+
+            <label className="environment-field">
+              Rainfall (mm)
+              <input
+                type="number"
+                min="0"
+                step="any"
+                placeholder="e.g. 25"
+                value={rainfall}
+                onChange={(event) =>
+                  setRainfall(event.target.value)
+                }
+              />
+            </label>
+
+            <label className="environment-field">
+              Wind Speed (km/h)
+              <input
+                type="number"
+                min="0"
+                step="any"
+                placeholder="e.g. 45"
+                value={windSpeed}
+                onChange={(event) =>
+                  setWindSpeed(event.target.value)
+                }
+              />
+            </label>
+
+            <label className="environment-field">
+              Temperature (°C)
+              <input
+                type="number"
+                step="any"
+                placeholder="e.g. 40"
+                value={temperature}
+                onChange={(event) =>
+                  setTemperature(event.target.value)
+                }
+              />
+            </label>
+
             <button
               onClick={analyzeSite}
               disabled={loading}
@@ -180,9 +248,7 @@ function App() {
               {loading ? "Analyzing..." : "Analyze Site →"}
             </button>
 
-            {error && (
-              <p className="error">{error}</p>
-            )}
+            {error && <p className="error">{error}</p>}
           </div>
 
           <div className="panel">
@@ -192,7 +258,6 @@ function App() {
               <div className="empty">
                 <span>⌕</span>
                 <h3>Awaiting image analysis</h3>
-
                 <p>
                   Upload an image and click Analyze Site.
                 </p>
@@ -202,7 +267,7 @@ function App() {
             {result && (
               <div>
                 <div className="risk-card">
-                  <span>Prototype Risk Score</span>
+                  <span>Object-Based Risk Score</span>
 
                   <h2>
                     {result.risk_analysis.risk_score}/100
@@ -213,14 +278,28 @@ function App() {
                   </strong>
                 </div>
 
-                <p>
-                  Detected objects: {result.count}
-                </p>
+                {combinedRisk && (
+                  <div className="risk-card">
+                    <span>Combined Prototype Risk Score</span>
+
+                    <h2>
+                      {combinedRisk.risk_score}/100
+                    </h2>
+
+                    <strong>
+                      {combinedRisk.risk_level} Risk
+                    </strong>
+                  </div>
+                )}
+
+                <p>Detected objects: {result.count}</p>
+
+                <h3>Detected Objects</h3>
 
                 {result.detections.length === 0 ? (
                   <p>
                     No objects detected above the current
-                    threshold.
+                    threshold. This does not guarantee site safety.
                   </p>
                 ) : (
                   result.detections.map((item, index) => (
@@ -229,12 +308,49 @@ function App() {
                       key={`${item.class}-${index}`}
                     >
                       <span>{item.class}</span>
-
                       <strong>
                         {(item.confidence * 100).toFixed(1)}%
                       </strong>
                     </div>
                   ))
+                )}
+
+                <h3>Environmental Risk Findings</h3>
+
+                {!environmental?.data_provided ? (
+                  <p>
+                    No environmental measurements were provided.
+                  </p>
+                ) : environmental.findings.length === 0 ? (
+                  <p>
+                    No environmental findings were triggered
+                    by the current prototype thresholds.
+                  </p>
+                ) : (
+                  environmental.findings.map((item, index) => (
+                    <div
+                      className="detection"
+                      key={`${item.risk}-${index}`}
+                    >
+                      <div>
+                        <strong>{item.risk}</strong>
+                        <p>
+                          Measured value: {item.value} {item.unit}
+                        </p>
+                        <p className="recommendation">
+                          <strong>Recommendation:</strong>{" "}
+                          {item.recommendation}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                {environmental && (
+                  <p>
+                    Environmental additional score:{" "}
+                    {environmental.additional_score}
+                  </p>
                 )}
 
                 <h3>Annotated Image</h3>
@@ -249,8 +365,8 @@ function App() {
 
                 {groupedFindings.length === 0 ? (
                   <p>
-                    No risk findings were generated for this
-                    image. This does not guarantee site safety.
+                    No object-based risk findings were generated.
+                    This does not guarantee site safety.
                   </p>
                 ) : (
                   groupedFindings.map((item, index) => (
@@ -260,27 +376,16 @@ function App() {
                     >
                       <div>
                         <strong>{item.hazard}</strong>
-
-                        <p>
-                          Severity: {item.severity}
-                        </p>
-
-                        <p>
-                          Detection count: {item.count}
-                        </p>
-
+                        <p>Severity: {item.severity}</p>
+                        <p>Detection count: {item.count}</p>
                         <p>
                           Highest confidence:{" "}
-                          {(
-                            item.highestConfidence * 100
-                          ).toFixed(1)}%
+                          {(item.highestConfidence * 100).toFixed(1)}%
                         </p>
 
                         {item.recommendation && (
                           <p className="recommendation">
-                            <strong>
-                              Recommendation:
-                            </strong>{" "}
+                            <strong>Recommendation:</strong>{" "}
                             {item.recommendation}
                           </p>
                         )}
@@ -292,6 +397,17 @@ function App() {
                 <p className="note">
                   {result.risk_analysis.note}
                 </p>
+
+                {agent?.limitations?.length > 0 && (
+                  <>
+                    <h3>Prototype Limitations</h3>
+                    <ul>
+                      {agent.limitations.map((item, index) => (
+                        <li key={index}>{item}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
               </div>
             )}
           </div>

@@ -3,7 +3,13 @@ from pathlib import Path
 import shutil
 import uuid
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import (
+    FastAPI,
+    File,
+    UploadFile,
+    HTTPException,
+    Form,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from ultralytics import YOLO
@@ -43,7 +49,12 @@ def home():
 
 
 @app.post("/detect")
-async def detect_hazards(file: UploadFile = File(...)):
+async def detect_hazards(
+    file: UploadFile = File(...),
+    rainfall_mm: float | None = Form(None, ge=0),
+    wind_speed_kmh: float | None = Form(None, ge=0),
+    temperature_c: float | None = Form(None),
+):
     allowed_types = {
         "image/jpeg",
         "image/png",
@@ -51,6 +62,7 @@ async def detect_hazards(file: UploadFile = File(...)):
     }
 
     if file.content_type not in allowed_types:
+        await file.close()
         raise HTTPException(
             status_code=400,
             detail="Please upload a JPG, PNG, or WEBP image.",
@@ -96,18 +108,46 @@ async def detect_hazards(file: UploadFile = File(...)):
                 ),
             })
 
-        # Run the Site Risk Agent on YOLO detections.
-        agent_result = run_site_risk_agent(detections)
-        risk_analysis = agent_result["risk_analysis"]
+        # Prepare optional environmental data.
+        environmental_data = None
+
+        if any(
+            value is not None
+            for value in (
+                rainfall_mm,
+                wind_speed_kmh,
+                temperature_c,
+            )
+        ):
+            environmental_data = {
+                "rainfall_mm": rainfall_mm,
+                "wind_speed_kmh": wind_speed_kmh,
+                "temperature_c": temperature_c,
+            }
+
+        # Run the Site Risk Agent.
+        try:
+            agent_result = run_site_risk_agent(
+                detections,
+                environmental_data=environmental_data,
+            )
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=str(exc),
+            ) from exc
 
         return {
             "image_id": image_id,
             "detections": detections,
             "count": len(detections),
-            "risk_analysis": risk_analysis,
+            "risk_analysis": agent_result["risk_analysis"],
             "agent": agent_result,
             "result_image": f"/result/{image_id}",
         }
+
+    except HTTPException:
+        raise
 
     except Exception as exc:
         raise HTTPException(
@@ -139,4 +179,3 @@ def get_result(image_id: str):
         result_path,
         media_type="image/jpeg",
     )
-
