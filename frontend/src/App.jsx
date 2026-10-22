@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import "./App.css";
 
@@ -110,6 +111,7 @@ function App() {
   const agent = result?.agent;
   const environmental = agent?.environmental_analysis;
   const combinedRisk = agent?.combined_risk;
+  const compliance = result?.compliance;
 
   return (
     <div className="app">
@@ -170,10 +172,7 @@ function App() {
 
             <label className="upload">
               {preview ? (
-                <img
-                  src={preview}
-                  alt="Selected site"
-                />
+                <img src={preview} alt="Selected site" />
               ) : (
                 <>
                   <span className="upload-icon">＋</span>
@@ -268,11 +267,9 @@ function App() {
               <div>
                 <div className="risk-card">
                   <span>Object-Based Risk Score</span>
-
                   <h2>
                     {result.risk_analysis.risk_score}/100
                   </h2>
-
                   <strong>
                     {result.risk_analysis.risk_level} Risk
                   </strong>
@@ -281,11 +278,7 @@ function App() {
                 {combinedRisk && (
                   <div className="risk-card">
                     <span>Combined Prototype Risk Score</span>
-
-                    <h2>
-                      {combinedRisk.risk_score}/100
-                    </h2>
-
+                    <h2>{combinedRisk.risk_score}/100</h2>
                     <strong>
                       {combinedRisk.risk_level} Risk
                     </strong>
@@ -313,6 +306,52 @@ function App() {
                       </strong>
                     </div>
                   ))
+                )}
+
+                <h3>Compliance Agent Review</h3>
+
+                {compliance ? (
+                  <div className="detection">
+                    <div>
+                      <strong>{compliance.status}</strong>
+
+                      <p>
+                        Possible PPE concerns:{" "}
+                        {compliance.possible_concerns?.length ?? 0}
+                      </p>
+
+                      {compliance.possible_concerns?.length > 0 ? (
+                        compliance.possible_concerns.map(
+                          (item, index) => (
+                            <div key={`${item.class}-${index}`}>
+                              <p>
+                                <strong>{item.class}</strong>:{" "}
+                                {item.message}
+                              </p>
+                              <p>
+                                Confidence:{" "}
+                                {(item.confidence * 100).toFixed(1)}%
+                              </p>
+                              <p>Human review required.</p>
+                            </div>
+                          )
+                        )
+                      ) : (
+                        <p>
+                          No possible missing-PPE labels were flagged.
+                          This does not confirm full site compliance.
+                        </p>
+                      )}
+
+                      {compliance.note && (
+                        <p className="note">{compliance.note}</p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p>
+                    Compliance review is not available for this result.
+                  </p>
                 )}
 
                 <h3>Environmental Risk Findings</h3>

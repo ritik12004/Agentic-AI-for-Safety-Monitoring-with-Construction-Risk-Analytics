@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 from ultralytics import YOLO
 
 from site_risk_agent import run_site_risk_agent
+from compliance_agent import run_compliance_agent
 
 
 app = FastAPI(title="Construction Site Safety Monitoring API")
@@ -131,6 +132,12 @@ async def detect_hazards(
                 detections,
                 environmental_data=environmental_data,
             )
+
+            # Run the Compliance Agent.
+            compliance_result = run_compliance_agent(
+                detections
+            )
+
         except (ValueError, TypeError) as exc:
             raise HTTPException(
                 status_code=422,
@@ -143,6 +150,7 @@ async def detect_hazards(
             "count": len(detections),
             "risk_analysis": agent_result["risk_analysis"],
             "agent": agent_result,
+            "compliance": compliance_result,
             "result_image": f"/result/{image_id}",
         }
 
