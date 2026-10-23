@@ -3,6 +3,9 @@ from pathlib import Path
 import shutil
 import uuid
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import (
     FastAPI,
     File,
@@ -16,6 +19,8 @@ from ultralytics import YOLO
 
 from site_risk_agent import run_site_risk_agent
 from compliance_agent import run_compliance_agent
+from db import init_db, save_assessment, list_assessments
+from gemini_agent import generate_safety_explanation
 
 
 app = FastAPI(title="Construction Site Safety Monitoring API")
@@ -40,6 +45,7 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 RESULT_DIR.mkdir(exist_ok=True)
 
 model = YOLO(str(MODEL_PATH))
+init_db()
 
 
 @app.get("/")
@@ -126,14 +132,13 @@ async def detect_hazards(
                 "temperature_c": temperature_c,
             }
 
-        # Run the Site Risk Agent.
+        # Run existing risk and compliance agents.
         try:
             agent_result = run_site_risk_agent(
                 detections,
                 environmental_data=environmental_data,
             )
 
-            # Run the Compliance Agent.
             compliance_result = run_compliance_agent(
                 detections
             )
@@ -144,6 +149,24 @@ async def detect_hazards(
                 detail=str(exc),
             ) from exc
 
+        # Save the existing assessment to the database.
+        save_assessment(
+            image_id,
+            environmental_data,
+            detections,
+            agent_result,
+            compliance_result,
+        )
+
+        # Generate an additional Gemini explanation.
+        # If Gemini is unavailable, keep the original
+        # detection, risk analysis and database result.
+        gemini_result = generate_safety_explanation(
+            detections=detections,
+            risk_analysis=agent_result["risk_analysis"],
+            environmental_data=environmental_data,
+        )
+
         return {
             "image_id": image_id,
             "detections": detections,
@@ -151,6 +174,7 @@ async def detect_hazards(
             "risk_analysis": agent_result["risk_analysis"],
             "agent": agent_result,
             "compliance": compliance_result,
+            "gemini_analysis": gemini_result,
             "result_image": f"/result/{image_id}",
         }
 
@@ -165,6 +189,11 @@ async def detect_hazards(
 
     finally:
         await file.close()
+
+
+@app.get("/assessments")
+def get_assessments(limit: int = 50):
+    return list_assessments(min(max(limit, 1), 200))
 
 
 @app.get("/result/{image_id}")
