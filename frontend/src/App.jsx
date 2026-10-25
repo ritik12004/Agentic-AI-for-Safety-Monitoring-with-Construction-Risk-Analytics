@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   Navigate,
@@ -36,18 +35,55 @@ function groupFindings(findings = []) {
 }
 
 function Login({ onLogin }) {
+  const [mode, setMode] = useState("login");
+  const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  function submit(event) {
+  async function submit(event) {
     event.preventDefault();
+    setError("");
+    setBusy(true);
 
-    if (username === "admin" && password === "admin@123") {
-      setError("");
-      onLogin();
-    } else {
-      setError("Invalid ID or password.");
+    try {
+      const endpoint =
+        mode === "login" ? "/auth/login" : "/auth/signup";
+
+      const body =
+        mode === "login"
+          ? { username: username.trim(), password }
+          : { name: name.trim(), email: username.trim(), password };
+
+      const response = await fetch(`${API}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const detail = Array.isArray(data.detail)
+          ? data.detail.map((item) => item.msg).join(", ")
+          : data.detail;
+
+        throw new Error(detail || "Request failed.");
+      }
+
+      if (mode === "signup") {
+        setMode("login");
+        setPassword("");
+        setError("Account created. Please sign in.");
+        return;
+      }
+
+      onLogin(data.access_token, data.user);
+    } catch (err) {
+      setError(err.message || "Could not connect to the backend.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -55,21 +91,44 @@ function Login({ onLogin }) {
     <div className="login-page">
       <form className="login-card" onSubmit={submit}>
         <div className="logo login-logo">S</div>
-
         <span className="tag">CONSTRUCTION SAFETY</span>
 
-        <h1>Welcome to Suraksha</h1>
+        <h1>
+          {mode === "login"
+            ? "Welcome to Suraksha"
+            : "Create your account"}
+        </h1>
 
         <p className="login-description">
-          Sign in to access your construction site monitoring dashboard.
+          {mode === "login"
+            ? "Sign in to access your construction site monitoring dashboard."
+            : "Create a user account to access Suraksha."}
         </p>
 
+        {mode === "signup" && (
+          <label className="environment-field">
+            Full name
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter your name"
+              autoComplete="name"
+              maxLength={100}
+              required
+            />
+          </label>
+        )}
+
         <label className="environment-field">
-          Admin ID
+          {mode === "login" ? "Username or email" : "Email"}
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="Enter admin ID"
+            placeholder={
+              mode === "login"
+                ? "Enter admin username or email"
+                : "Enter your email"
+            }
             autoComplete="username"
             required
           />
@@ -81,30 +140,74 @@ function Login({ onLogin }) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter password"
-            autoComplete="current-password"
+            placeholder={
+              mode === "signup"
+                ? "At least 8 characters"
+                : "Enter password"
+            }
+            autoComplete={
+              mode === "signup"
+                ? "new-password"
+                : "current-password"
+            }
+            minLength={mode === "signup" ? 8 : 1}
+            maxLength={128}
             required
           />
         </label>
 
-        {error && <p className="error">{error}</p>}
+        {error && (
+          <p
+            className={
+              error.startsWith("Account created") ? "note" : "error"
+            }
+          >
+            {error}
+          </p>
+        )}
 
-        <button type="submit">Sign In →</button>
+        <button type="submit" disabled={busy}>
+          {busy
+            ? "Please wait..."
+            : mode === "login"
+              ? "Sign In →"
+              : "Create Account →"}
+        </button>
 
         <p className="note">
-          Development login for the current prototype.
+          {mode === "login" ? "New user? " : "Already have an account? "}
+
+          <button
+            type="button"
+            className="logout-button"
+            onClick={() => {
+              setMode(mode === "login" ? "signup" : "login");
+              setError("");
+              setPassword("");
+            }}
+          >
+            {mode === "login" ? "Sign up" : "Sign in"}
+          </button>
         </p>
       </form>
     </div>
   );
 }
 
-function Sidebar({ onLogout }) {
+function Sidebar({ onLogout, user }) {
   const links = [
     { to: "/", label: "Dashboard", icon: "▦" },
     { to: "/monitoring", label: "Site Monitoring", icon: "⌕" },
-    { to: "/environment", label: "Environmental Assessment", icon: "◉" },
-    { to: "/compliance", label: "Safety & Compliance", icon: "✓" },
+    {
+      to: "/environment",
+      label: "Environmental Assessment",
+      icon: "◉",
+    },
+    {
+      to: "/compliance",
+      label: "Safety & Compliance",
+      icon: "✓",
+    },
     { to: "/reports", label: "Risk Reports", icon: "▤" },
   ];
 
@@ -139,11 +242,19 @@ function Sidebar({ onLogout }) {
 
       <div className="sidebar-bottom">
         <div className="admin-profile">
-          <div className="avatar">A</div>
+          <div className="avatar">
+            {(user?.name || user?.role || "U")
+              .charAt(0)
+              .toUpperCase()}
+          </div>
 
           <div className="admin-details">
-            <strong>Administrator</strong>
-            <p>Local prototype</p>
+            <strong>{user?.name || user?.email || "User"}</strong>
+            <p>
+              {user?.role === "admin"
+                ? "Administrator"
+                : "Standard user"}
+            </p>
           </div>
         </div>
 
@@ -380,7 +491,7 @@ function SiteMonitoring({ analysis }) {
           {analysis.result.result_image && (
             <img
               className="result-image"
-              src={`${API}${analysis.result.result_image}`}
+              src={analysis.processedImage || ""}
               alt="Processed construction site image with detection annotations"
             />
           )}
@@ -632,7 +743,9 @@ function ReportsPage({ result }) {
               <div className="risk-card">
                 <span>Combined Assessment Score</span>
                 <h2>{result.agent.combined_risk.risk_score}/100</h2>
-                <strong>{result.agent.combined_risk.risk_level} Risk</strong>
+                <strong>
+                  {result.agent.combined_risk.risk_level} Risk
+                </strong>
               </div>
             )}
 
@@ -681,7 +794,23 @@ function ReportsPage({ result }) {
 }
 
 function App() {
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [token, setToken] = useState(
+    () => sessionStorage.getItem("suraksha_token") || ""
+  );
+
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(
+        sessionStorage.getItem("suraksha_user") || "null"
+      );
+    } catch {
+      return null;
+    }
+  });
+
+  const loggedIn = Boolean(token && user);
+
+  const [processedImage, setProcessedImage] = useState("");
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState("");
   const [result, setResult] = useState(null);
@@ -736,6 +865,9 @@ function App() {
 
       const response = await fetch(`${API}/detect`, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
 
@@ -750,6 +882,27 @@ function App() {
       }
 
       setResult(data);
+
+      if (processedImage) {
+        URL.revokeObjectURL(processedImage);
+      }
+
+      const imageResponse = await fetch(
+        `${API}${data.result_image}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (imageResponse.ok) {
+        const imageBlob = await imageResponse.blob();
+        setProcessedImage(URL.createObjectURL(imageBlob));
+      } else {
+        setProcessedImage("");
+      }
+
       navigate("/reports");
     } catch (err) {
       setError(
@@ -762,18 +915,36 @@ function App() {
   }
 
   function logout() {
-    setLoggedIn(false);
+    sessionStorage.removeItem("suraksha_token");
+    sessionStorage.removeItem("suraksha_user");
+
+    setToken("");
+    setUser(null);
+    setResult(null);
+    setImage(null);
+    setPreview("");
+    setProcessedImage("");
+
     navigate("/");
   }
 
+  function handleLogin(accessToken, account) {
+    sessionStorage.setItem("suraksha_token", accessToken);
+    sessionStorage.setItem("suraksha_user", JSON.stringify(account));
+
+    setToken(accessToken);
+    setUser(account);
+  }
+
   if (!loggedIn) {
-    return <Login onLogin={() => setLoggedIn(true)} />;
+    return <Login onLogin={handleLogin} />;
   }
 
   const analysis = {
     image,
     preview,
     result,
+    processedImage,
     loading,
     error,
     rainfall,
@@ -788,11 +959,14 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar onLogout={logout} />
+      <Sidebar onLogout={logout} user={user} />
 
       <main className="workspace">
         <Routes>
-          <Route path="/" element={<Dashboard result={result} />} />
+          <Route
+            path="/"
+            element={<Dashboard result={result} />}
+          />
 
           <Route
             path="/monitoring"
@@ -814,7 +988,10 @@ function App() {
             element={<ReportsPage result={result} />}
           />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route
+            path="*"
+            element={<Navigate to="/" replace />}
+          />
         </Routes>
 
         <footer className="workspace-footer">
