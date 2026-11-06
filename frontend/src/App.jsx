@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useEffect, useState } from "react";
 import {
   Navigate,
   NavLink,
@@ -14,14 +15,10 @@ function groupFindings(findings = []) {
   const grouped = {};
 
   findings.forEach((item) => {
-    const key = item.hazard;
+    const key = item.hazard || "Other finding";
 
     if (!grouped[key]) {
-      grouped[key] = {
-        ...item,
-        count: 0,
-        highestConfidence: 0,
-      };
+      grouped[key] = { ...item, count: 0, highestConfidence: 0 };
     }
 
     grouped[key].count += 1;
@@ -33,6 +30,10 @@ function groupFindings(findings = []) {
 
   return Object.values(grouped);
 }
+
+/* ================================
+   LOGIN
+================================ */
 
 function Login({ onLogin }) {
   const [mode, setMode] = useState("login");
@@ -48,8 +49,7 @@ function Login({ onLogin }) {
     setBusy(true);
 
     try {
-      const endpoint =
-        mode === "login" ? "/auth/login" : "/auth/signup";
+      const endpoint = mode === "login" ? "/auth/login" : "/auth/signup";
 
       const body =
         mode === "login"
@@ -81,7 +81,7 @@ function Login({ onLogin }) {
 
       onLogin(data.access_token, data.user);
     } catch (err) {
-      setError(err.message || "Could not connect to the backend.");
+      setError(err.message || "Could not connect to backend.");
     } finally {
       setBusy(false);
     }
@@ -94,9 +94,7 @@ function Login({ onLogin }) {
         <span className="tag">CONSTRUCTION SAFETY</span>
 
         <h1>
-          {mode === "login"
-            ? "Welcome to Suraksha"
-            : "Create your account"}
+          {mode === "login" ? "Welcome to Suraksha" : "Create your account"}
         </h1>
 
         <p className="login-description">
@@ -124,11 +122,7 @@ function Login({ onLogin }) {
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder={
-              mode === "login"
-                ? "Enter admin username or email"
-                : "Enter your email"
-            }
+            placeholder="Enter username or email"
             autoComplete="username"
             required
           />
@@ -140,15 +134,9 @@ function Login({ onLogin }) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder={
-              mode === "signup"
-                ? "At least 8 characters"
-                : "Enter password"
-            }
+            placeholder="Enter password"
             autoComplete={
-              mode === "signup"
-                ? "new-password"
-                : "current-password"
+              mode === "signup" ? "new-password" : "current-password"
             }
             minLength={mode === "signup" ? 8 : 1}
             maxLength={128}
@@ -157,11 +145,7 @@ function Login({ onLogin }) {
         </label>
 
         {error && (
-          <p
-            className={
-              error.startsWith("Account created") ? "note" : "error"
-            }
-          >
+          <p className={error.startsWith("Account created") ? "note" : "error"}>
             {error}
           </p>
         )}
@@ -176,7 +160,6 @@ function Login({ onLogin }) {
 
         <p className="note">
           {mode === "login" ? "New user? " : "Already have an account? "}
-
           <button
             type="button"
             className="logout-button"
@@ -194,28 +177,23 @@ function Login({ onLogin }) {
   );
 }
 
-function Sidebar({ onLogout, user }) {
+/* ================================
+   SIDEBAR
+================================ */
+
+function Sidebar({ onLogout, user, unreadCount }) {
   const links = [
     { to: "/", label: "Dashboard", icon: "▦" },
     { to: "/monitoring", label: "Site Monitoring", icon: "⌕" },
-    {
-      to: "/environment",
-      label: "Environmental Assessment",
-      icon: "◉",
-    },
-    {
-      to: "/compliance",
-      label: "Safety & Compliance",
-      icon: "✓",
-    },
-    { to: "/reports", label: "Risk Reports", icon: "▤" },
+    { to: "/alerts", label: "Smart Alert Center", icon: "🔔" },
+    { to: "/compliance", label: "Safety & Compliance", icon: "✓" },
+    { to: "/reports", label: "Assessment Results", icon: "▤" },
   ];
 
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
         <div className="logo">S</div>
-
         <div>
           <h2>Suraksha</h2>
           <p>Construction Safety</p>
@@ -236,6 +214,10 @@ function Sidebar({ onLogout, user }) {
           >
             <span>{link.icon}</span>
             {link.label}
+
+            {link.to === "/alerts" && unreadCount > 0 && (
+              <span className="alert-count">{unreadCount}</span>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -243,48 +225,29 @@ function Sidebar({ onLogout, user }) {
       <div className="sidebar-bottom">
         <div className="admin-profile">
           <div className="avatar">
-            {(user?.name || user?.role || "U")
-              .charAt(0)
-              .toUpperCase()}
+            {(user?.name || user?.role || "U").charAt(0).toUpperCase()}
           </div>
 
           <div className="admin-details">
             <strong>{user?.name || user?.email || "User"}</strong>
             <p>
-              {user?.role === "admin"
-                ? "Administrator"
-                : "Standard user"}
+              {user?.role === "admin" ? "Administrator" : "Standard user"}
             </p>
           </div>
         </div>
 
-        <button
-          type="button"
-          className="logout-button"
-          onClick={onLogout}
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M10 17l5-5-5-5" />
-            <path d="M15 12H3" />
-            <path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" />
-          </svg>
-
+        <button type="button" className="logout-button" onClick={onLogout}>
+          <span>↪</span>
           <span>Log out</span>
         </button>
       </div>
     </aside>
   );
 }
+
+/* ================================
+   COMMON COMPONENTS
+================================ */
 
 function PageHeader({ title, subtitle }) {
   return (
@@ -310,7 +273,13 @@ function StatCard({ label, value, detail }) {
   );
 }
 
-function Dashboard({ result }) {
+/* ================================
+   DASHBOARD
+================================ */
+
+function Dashboard({ result, unreadCount }) {
+  const workflow = result?.day3_safety_workflow;
+
   return (
     <>
       <PageHeader
@@ -334,19 +303,15 @@ function Dashboard({ result }) {
         <StatCard
           label="Risk Score"
           value={
-            result
-              ? `${result.risk_analysis?.risk_score ?? 0}/100`
-              : "—"
+            result ? `${result.risk_analysis?.risk_score ?? 0}/100` : "—"
           }
-          detail={
-            result?.risk_analysis?.risk_level ?? "Awaiting assessment"
-          }
+          detail={result?.risk_analysis?.risk_level ?? "Awaiting assessment"}
         />
 
         <StatCard
-          label="Assessment Status"
-          value={result ? "Completed" : "Ready"}
-          detail="Current session"
+          label="Unread Alerts"
+          value={unreadCount}
+          detail="Awaiting safety review"
         />
       </section>
 
@@ -354,20 +319,23 @@ function Dashboard({ result }) {
         <h2>Welcome to Suraksha</h2>
 
         <p>
-          Monitor construction sites, review detected objects, assess
-          environmental conditions and examine potential safety concerns
-          from one workspace.
+          Monitor construction sites, detect potential hazards, review
+          protective equipment concerns and track safety alerts from one
+          workspace.
         </p>
 
         <p className="note">
-          Risk scores are preliminary estimates. They are not certified
-          safety decisions, and a low score does not confirm that a site
-          is safe.
+          Automated predictions are preliminary. They are not certified safety
+          decisions, and a low score does not confirm that a site is safe.
         </p>
 
         <div className="panel-action-row">
           <NavLink className="page-action" to="/monitoring">
             Open Site Monitoring →
+          </NavLink>
+
+          <NavLink className="page-action" to="/alerts">
+            Open Smart Alert Center →
           </NavLink>
         </div>
       </section>
@@ -378,45 +346,55 @@ function Dashboard({ result }) {
         {result ? (
           <>
             <p>Detected objects: {result.count}</p>
-
             <p>
-              Risk level:{" "}
-              {result.risk_analysis?.risk_level ?? "Unavailable"}
+              Risk level: {result.risk_analysis?.risk_level ?? "Unavailable"}
+            </p>
+            <p>Assessment ID: {result.image_id}</p>
+            <p>
+              Safety workflow:{" "}
+              {workflow?.decision?.replaceAll("_", " ") || "Unavailable"}
             </p>
 
-            <p>Assessment ID: {result.image_id ?? "Not provided"}</p>
-
-            <div className="panel-action-row">
-              <NavLink className="page-action" to="/reports">
-                View Risk Reports →
-              </NavLink>
-            </div>
+            <NavLink className="page-action" to="/reports">
+              View Assessment Results →
+            </NavLink>
           </>
         ) : (
-          <p>No assessment available in this session yet.</p>
+          <>
+            <p>No assessment available in this session yet.</p>
+            <NavLink className="page-action" to="/monitoring">
+              Start Site Monitoring →
+            </NavLink>
+          </>
         )}
       </section>
     </>
   );
 }
 
+/* ================================
+   SITE MONITORING
+================================ */
+
 function SiteMonitoring({ analysis }) {
   return (
     <>
       <PageHeader
         title="Site Monitoring"
-        subtitle="Upload a construction site image to review detected objects."
+        subtitle="Upload a construction site image to start an AI-powered assessment."
       />
 
       <section className="panel">
-        <h2>Construction Site Image</h2>
+        <h2>Upload Site Image</h2>
+
+        <p>
+          Select a construction site image. Suraksha will analyze the image and
+          display the complete assessment on the Assessment Results page.
+        </p>
 
         <label className="upload">
           {analysis.preview ? (
-            <img
-              src={analysis.preview}
-              alt="Selected construction site"
-            />
+            <img src={analysis.preview} alt="Selected construction site" />
           ) : (
             <>
               <span className="upload-icon">＋</span>
@@ -432,184 +410,35 @@ function SiteMonitoring({ analysis }) {
           />
         </label>
 
-        {analysis.image && <p>Selected: {analysis.image.name}</p>}
+        {analysis.image && <p>Selected image: {analysis.image.name}</p>}
 
         <div className="monitoring-action-row">
           <button
             type="button"
             className="monitoring-submit"
             onClick={analysis.analyzeSite}
-            disabled={analysis.loading}
+            disabled={analysis.loading || !analysis.image}
           >
-            {analysis.loading ? "Processing image..." : "Access Site →"}
+            {analysis.loading ? "Analyzing Site..." : "Analyze Image →"}
           </button>
         </div>
 
         {analysis.error && <p className="error">{analysis.error}</p>}
-      </section>
 
-      {analysis.result && (
-        <section className="panel">
-          <h2>Assessment Results</h2>
-
-          <div className="risk-card">
-            <span>Preliminary Risk Score</span>
-
-            <h2>
-              {analysis.result.risk_analysis?.risk_score ?? "—"}/100
-            </h2>
-
-            <strong>
-              {analysis.result.risk_analysis?.risk_level ?? "Unknown"} Risk
-            </strong>
-          </div>
-
-          <p>Objects detected: {analysis.result.count}</p>
-
-          {analysis.result.detections?.length ? (
-            analysis.result.detections.map((item, index) => (
-              <div
-                className="detection"
-                key={`${item.class}-${index}`}
-              >
-                <span>{item.class}</span>
-
-                <strong>
-                  {((item.confidence ?? 0) * 100).toFixed(1)}%
-                </strong>
-              </div>
-            ))
-          ) : (
-            <p>
-              No objects were detected above the current detection
-              threshold.
-            </p>
-          )}
-
-          <h3>Processed Image</h3>
-
-          {analysis.result.result_image && (
-            <img
-              className="result-image"
-              src={analysis.processedImage || ""}
-              alt="Processed construction site image with detection annotations"
-            />
-          )}
-
+        {analysis.loading && (
           <p className="note">
-            Detected objects are automated predictions and may be
-            incorrect. Review the original image and actual site
-            conditions before making safety decisions.
+            Please wait. The Safety Agent and Risk Analysis are processing your
+            image. You will be redirected to Assessment Results automatically.
           </p>
-        </section>
-      )}
-    </>
-  );
-}
-
-function EnvironmentPage({ analysis }) {
-  const environmental = analysis.result?.agent?.environmental_analysis;
-
-  return (
-    <>
-      <PageHeader
-        title="Environmental Assessment"
-        subtitle="Record available weather measurements for site assessment."
-      />
-
-      <section className="panel">
-        <h2>Environmental Conditions</h2>
-        <p>Leave unknown measurements blank.</p>
-
-        <label className="environment-field">
-          Rainfall (mm)
-          <input
-            type="number"
-            min="0"
-            step="any"
-            value={analysis.rainfall}
-            onChange={(e) => analysis.setRainfall(e.target.value)}
-            placeholder="e.g. 25"
-          />
-        </label>
-
-        <label className="environment-field">
-          Wind Speed (km/h)
-          <input
-            type="number"
-            min="0"
-            step="any"
-            value={analysis.windSpeed}
-            onChange={(e) => analysis.setWindSpeed(e.target.value)}
-            placeholder="e.g. 45"
-          />
-        </label>
-
-        <label className="environment-field">
-          Temperature (°C)
-          <input
-            type="number"
-            step="any"
-            value={analysis.temperature}
-            onChange={(e) => analysis.setTemperature(e.target.value)}
-            placeholder="e.g. 35"
-          />
-        </label>
-
-        <p className="note">
-          Rainfall, wind speed and temperature are connected to the
-          existing assessment service. Visibility and ground condition
-          are not currently connected.
-        </p>
-
-        <NavLink className="page-action" to="/monitoring">
-          Select an Image and Assess →
-        </NavLink>
+        )}
       </section>
-
-      {analysis.result && (
-        <section className="panel">
-          <h2>Environmental Findings</h2>
-
-          {environmental?.data_provided ? (
-            <>
-              <p>
-                Additional risk score: {environmental.additional_score}
-              </p>
-
-              {environmental.findings?.length ? (
-                environmental.findings.map((item, index) => (
-                  <div
-                    className="detection"
-                    key={`${item.risk}-${index}`}
-                  >
-                    <div>
-                      <strong>{item.risk}</strong>
-                      <p>
-                        Measured value: {item.value} {item.unit}
-                      </p>
-                      <p>{item.recommendation}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p>
-                  No findings were triggered by the current assessment
-                  thresholds.
-                </p>
-              )}
-            </>
-          ) : (
-            <p>
-              No environmental measurements were included in the
-              latest assessment.
-            </p>
-          )}
-        </section>
-      )}
     </>
   );
 }
+
+/* ================================
+   SAFETY AND COMPLIANCE
+================================ */
 
 function CompliancePage({ result }) {
   const compliance = result?.compliance;
@@ -638,10 +467,7 @@ function CompliancePage({ result }) {
 
             {compliance.possible_concerns?.length ? (
               compliance.possible_concerns.map((item, index) => (
-                <div
-                  className="detection"
-                  key={`${item.class}-${index}`}
-                >
+                <div className="detection" key={`${item.class}-${index}`}>
                   <div>
                     <strong>{item.class}</strong>
                     <p>{item.message}</p>
@@ -654,16 +480,13 @@ function CompliancePage({ result }) {
                 </div>
               ))
             ) : (
-              <p>
-                No possible missing protective equipment labels were
-                flagged by the detection system.
-              </p>
+              <p>No possible missing protective equipment labels were flagged.</p>
             )}
 
             {compliance.note && <p className="note">{compliance.note}</p>}
           </>
         ) : (
-          <p>Compliance results are unavailable for this assessment.</p>
+          <p>Compliance results are unavailable.</p>
         )}
       </section>
 
@@ -674,10 +497,7 @@ function CompliancePage({ result }) {
           <p>No assessment available.</p>
         ) : findings.length ? (
           findings.map((item, index) => (
-            <div
-              className="detection"
-              key={`${item.hazard}-${index}`}
-            >
+            <div className="detection" key={`${item.hazard}-${index}`}>
               <div>
                 <strong>{item.hazard}</strong>
                 <p>Severity: {item.severity}</p>
@@ -698,7 +518,270 @@ function CompliancePage({ result }) {
   );
 }
 
-function ReportsPage({ result }) {
+/* ================================
+   SMART ALERT CENTER
+================================ */
+
+function AlertCenter({ alerts, unreadCount, refreshAlerts, token }) {
+  const [updatingId, setUpdatingId] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    setError("");
+
+    try {
+      await refreshAlerts();
+    } catch (err) {
+      setError(err.message || "Could not refresh alerts.");
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  async function updateAlert(id, status) {
+    setUpdatingId(id);
+    setError("");
+
+    try {
+      const response = await fetch(`${API}/alerts/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Could not update alert.");
+      }
+
+      await refreshAlerts();
+    } catch (err) {
+      setError(err.message || "Could not update alert.");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  return (
+    <>
+      <PageHeader
+        title="Smart Alert Center"
+        subtitle="Review possible safety concerns generated by the Safety Agent."
+      />
+
+      <section className="stats">
+        <StatCard
+          label="Total Alerts"
+          value={alerts.length}
+          detail="Saved safety alerts"
+        />
+
+        <StatCard
+          label="Unread"
+          value={unreadCount}
+          detail="Awaiting review"
+        />
+
+        <StatCard
+          label="Acknowledged"
+          value={alerts.filter((a) => a.status === "Acknowledged").length}
+          detail="Review started"
+        />
+
+        <StatCard
+          label="Resolved"
+          value={alerts.filter((a) => a.status === "Resolved").length}
+          detail="Marked resolved"
+        />
+      </section>
+
+      <section className="panel">
+        <div className="panel-action-row">
+          <h2>Safety Notifications</h2>
+
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            {refreshing ? "Refreshing..." : "↻ Refresh"}
+          </button>
+        </div>
+
+        {error && <p className="error">{error}</p>}
+
+        {alerts.length === 0 ? (
+          <p>No alerts found. New Safety Agent alerts will appear here.</p>
+        ) : (
+          alerts.map((alert) => (
+            <div className="detection" key={alert.id}>
+              <div>
+                <strong>{alert.title}</strong>
+                <p>{alert.message}</p>
+                <p>
+                  Severity: <strong>{alert.severity}</strong>
+                </p>
+                <p>
+                  Confidence:{" "}
+                  {((alert.confidence ?? 0) * 100).toFixed(1)}%
+                </p>
+                <p>Assessment ID: {alert.image_id}</p>
+                <p>
+                  Status: <strong>{alert.status}</strong>
+                </p>
+                <p>
+                  {alert.created_at
+                    ? new Date(alert.created_at).toLocaleString()
+                    : "Date unavailable"}
+                </p>
+
+                {alert.status === "Unread" && (
+                  <button
+                    type="button"
+                    disabled={updatingId === alert.id}
+                    onClick={() => updateAlert(alert.id, "Acknowledged")}
+                  >
+                    {updatingId === alert.id
+                      ? "Updating..."
+                      : "Acknowledge"}
+                  </button>
+                )}
+
+                {alert.status !== "Resolved" && (
+                  <button
+                    type="button"
+                    disabled={updatingId === alert.id}
+                    onClick={() => updateAlert(alert.id, "Resolved")}
+                  >
+                    Mark Resolved
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+
+        <p className="note">
+          These are prototype alerts based on automated PPE predictions.
+          They do not confirm an actual violation or identify individual
+          workers. Human review is required.
+        </p>
+      </section>
+    </>
+  );
+}
+
+/* ================================
+   SAFETY WORKFLOW
+================================ */
+
+function SafetyWorkflow({ result }) {
+  const workflow = result?.day3_safety_workflow;
+
+  return (
+    <section className="panel">
+      <h2>Safety Agent & LangGraph Workflow</h2>
+
+      {!workflow ? (
+        <p>Day 3 workflow information is not available.</p>
+      ) : (
+        <>
+          <div className="risk-card">
+            <span>LangGraph Final Decision</span>
+            <h2>
+              {workflow.decision?.replaceAll("_", " ") || "Unavailable"}
+            </h2>
+
+            <strong>
+              {workflow.decision === "pending_safety_review"
+                ? "Safety Review Required"
+                : workflow.decision === "no_violation_detected"
+                  ? "No Findings Reported"
+                  : "Workflow Status"}
+            </strong>
+          </div>
+
+          <div className="detection">
+            <div>
+              <strong>YOLOv8 Prediction</strong>
+              <p>Image detection results received.</p>
+            </div>
+            <strong>Completed</strong>
+          </div>
+
+          <div className="detection">
+            <div>
+              <strong>Safety Agent Analysis</strong>
+              <p>Safety findings processed.</p>
+            </div>
+            <strong>Completed</strong>
+          </div>
+
+          <div className="detection">
+            <div>
+              <strong>LangGraph Conditional Routing</strong>
+              <p>
+                {workflow.decision === "pending_safety_review"
+                  ? "Findings returned for safety review."
+                  : "No findings returned by the workflow."}
+              </p>
+            </div>
+
+            <strong>
+              {workflow.decision === "pending_safety_review"
+                ? "Alert Route"
+                : "No-Finding Route"}
+            </strong>
+          </div>
+
+          <h3>Safety Agent Findings</h3>
+
+          {workflow.findings?.length ? (
+            workflow.findings.map((item, index) => (
+              <div className="detection" key={index}>
+                <div>
+                  <strong>
+                    {typeof item === "string"
+                      ? item
+                      : item.hazard ||
+                        item.class ||
+                        item.message ||
+                        `Finding ${index + 1}`}
+                  </strong>
+
+                  {typeof item === "object" && item !== null && (
+                    <>
+                      {item.message && <p>{item.message}</p>}
+                      {item.recommendation && <p>{item.recommendation}</p>}
+                    </>
+                  )}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p>No findings were returned by the Safety Agent.</p>
+          )}
+        </>
+      )}
+
+      <p className="note">
+        Automated detections are preliminary and require human review.
+      </p>
+    </section>
+  );
+}
+
+/* ================================
+   ASSESSMENT RESULTS
+================================ */
+
+function ReportsPage({ result, processedImage }) {
   const details = result?.gemini_analysis;
 
   const explanation =
@@ -713,14 +796,17 @@ function ReportsPage({ result }) {
   return (
     <>
       <PageHeader
-        title="Risk Reports"
-        subtitle="Review the latest assessment, findings and recommendations."
+        title="Assessment Results"
+        subtitle="Review the complete results of your construction site assessment."
       />
 
       {!result ? (
         <section className="panel">
-          <h2>No Report Available</h2>
-          <p>Assess a construction site image to generate a report.</p>
+          <h2>No Assessment Available</h2>
+          <p>
+            Upload a construction site image from Site Monitoring to generate
+            assessment results.
+          </p>
 
           <NavLink className="page-action" to="/monitoring">
             Go to Site Monitoring →
@@ -729,30 +815,104 @@ function ReportsPage({ result }) {
       ) : (
         <>
           <section className="panel">
-            <h2>Assessment Summary</h2>
+            <h2>Processed Site Image</h2>
 
-            <div className="risk-card">
-              <span>Preliminary Risk Score</span>
-              <h2>{result.risk_analysis?.risk_score ?? "—"}/100</h2>
-              <strong>
-                {result.risk_analysis?.risk_level ?? "Unknown"} Risk
-              </strong>
-            </div>
-
-            {result.agent?.combined_risk && (
-              <div className="risk-card">
-                <span>Combined Assessment Score</span>
-                <h2>{result.agent.combined_risk.risk_score}/100</h2>
-                <strong>
-                  {result.agent.combined_risk.risk_level} Risk
-                </strong>
-              </div>
+            {processedImage ? (
+              <img
+                className="result-image"
+                src={processedImage}
+                alt="Processed construction site with detection annotations"
+              />
+            ) : (
+              <p>Processed image is not available.</p>
             )}
 
-            <p>Detected objects: {result.count}</p>
+            <p className="note">
+              The displayed image contains automated object detection
+              predictions. Please verify the observations manually.
+            </p>
+          </section>
+
+          <section className="panel">
+            <h2>Assessment Summary</h2>
+
+            <div className="stats">
+              <StatCard
+                label="Detected Objects"
+                value={result.count ?? 0}
+                detail="Objects identified"
+              />
+
+              <StatCard
+                label="Risk Score"
+                value={`${result.risk_analysis?.risk_score ?? "—"}/100`}
+                detail="Preliminary score"
+              />
+
+              <StatCard
+                label="Risk Level"
+                value={result.risk_analysis?.risk_level ?? "Unknown"}
+                detail="Site risk assessment"
+              />
+
+              <StatCard
+                label="Assessment ID"
+                value={result.image_id ?? "—"}
+                detail="Current assessment"
+              />
+            </div>
 
             {result.risk_analysis?.note && (
-              <p>{result.risk_analysis.note}</p>
+              <p className="note">{result.risk_analysis.note}</p>
+            )}
+          </section>
+
+          <section className="panel">
+            <h2>Detected Objects</h2>
+
+            {result.detections?.length ? (
+              result.detections.map((item, index) => (
+                <div className="detection" key={`${item.class}-${index}`}>
+                  <div>
+                    <strong>{item.class}</strong>
+                  </div>
+
+                  <strong>
+                    {((item.confidence ?? 0) * 100).toFixed(1)}%
+                  </strong>
+                </div>
+              ))
+            ) : (
+              <p>
+                No objects were detected above the current detection threshold.
+              </p>
+            )}
+          </section>
+
+          <SafetyWorkflow result={result} />
+
+          <section className="panel">
+            <h2>Risk Findings</h2>
+
+            {groupFindings(result.risk_analysis?.findings).length ? (
+              groupFindings(result.risk_analysis?.findings).map(
+                (item, index) => (
+                  <div className="detection" key={`${item.hazard}-${index}`}>
+                    <div>
+                      <strong>{item.hazard}</strong>
+                      <p>Severity: {item.severity}</p>
+                      <p>Detection count: {item.count}</p>
+                      <p>
+                        Highest confidence:{" "}
+                        {(item.highestConfidence * 100).toFixed(1)}%
+                      </p>
+                      {item.recommendation && <p>{item.recommendation}</p>}
+                    </div>
+                  </div>
+                )
+              )
+            ) : (
+              <p>No object-based risk findings were generated.</p>
             )}
           </section>
 
@@ -764,9 +924,7 @@ function ReportsPage({ result }) {
                 <p>{explanation}</p>
               </div>
             ) : (
-              <p>
-                No additional explanation was returned for this assessment.
-              </p>
+              <p>No additional explanation was returned.</p>
             )}
 
             {recommendations.length > 0 && (
@@ -781,10 +939,9 @@ function ReportsPage({ result }) {
             )}
 
             <p className="note">
-              Assessment findings may be incomplete or incorrect and
-              require human review. This page displays the latest result
-              held in the current browser session, not the complete
-              database history.
+              Assessment findings may be incomplete or incorrect and require
+              human review. This is a prototype assessment, not a certified
+              safety decision.
             </p>
           </section>
         </>
@@ -793,6 +950,10 @@ function ReportsPage({ result }) {
   );
 }
 
+/* ================================
+   MAIN APP
+================================ */
+
 function App() {
   const [token, setToken] = useState(
     () => sessionStorage.getItem("suraksha_token") || ""
@@ -800,9 +961,7 @@ function App() {
 
   const [user, setUser] = useState(() => {
     try {
-      return JSON.parse(
-        sessionStorage.getItem("suraksha_user") || "null"
-      );
+      return JSON.parse(sessionStorage.getItem("suraksha_user") || "null");
     } catch {
       return null;
     }
@@ -816,26 +975,66 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [rainfall, setRainfall] = useState("");
-  const [windSpeed, setWindSpeed] = useState("");
-  const [temperature, setTemperature] = useState("");
+
+  const [alerts, setAlerts] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const navigate = useNavigate();
+
+  /* Load and refresh alerts */
+
+  async function refreshAlerts() {
+    if (!token) {
+      throw new Error("Please sign in again to load alerts.");
+    }
+
+    const response = await fetch(`${API}/alerts`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail || "Could not load alerts. Please try again."
+      );
+    }
+
+    setAlerts(Array.isArray(data.alerts) ? data.alerts : []);
+    setUnreadCount(data.unread_count ?? 0);
+
+    return data;
+  }
+
+  useEffect(() => {
+    if (token) {
+      refreshAlerts().catch((err) => {
+        console.error("Alert loading error:", err);
+      });
+    }
+  }, [token]);
+
+  /* Image selection */
 
   function handleImageChange(event) {
     const file = event.target.files?.[0];
 
     if (!file) return;
 
-    if (preview) {
-      URL.revokeObjectURL(preview);
-    }
+    if (preview) URL.revokeObjectURL(preview);
+    if (processedImage) URL.revokeObjectURL(processedImage);
 
     setImage(file);
     setPreview(URL.createObjectURL(file));
+    setProcessedImage("");
     setResult(null);
     setError("");
   }
+
+  /* Run assessment */
 
   async function analyzeSite() {
     if (!image) {
@@ -850,18 +1049,6 @@ function App() {
     try {
       const formData = new FormData();
       formData.append("file", image);
-
-      if (rainfall.trim() !== "") {
-        formData.append("rainfall_mm", rainfall);
-      }
-
-      if (windSpeed.trim() !== "") {
-        formData.append("wind_speed_kmh", windSpeed);
-      }
-
-      if (temperature.trim() !== "") {
-        formData.append("temperature_c", temperature);
-      }
 
       const response = await fetch(`${API}/detect`, {
         method: "POST",
@@ -883,40 +1070,44 @@ function App() {
 
       setResult(data);
 
-      if (processedImage) {
-        URL.revokeObjectURL(processedImage);
-      }
-
-      const imageResponse = await fetch(
-        `${API}${data.result_image}`,
-        {
+      if (data.result_image) {
+        const imageResponse = await fetch(`${API}${data.result_image}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
-      );
+        });
 
-      if (imageResponse.ok) {
-        const imageBlob = await imageResponse.blob();
-        setProcessedImage(URL.createObjectURL(imageBlob));
+        if (imageResponse.ok) {
+          const imageBlob = await imageResponse.blob();
+          const imageUrl = URL.createObjectURL(imageBlob);
+          setProcessedImage(imageUrl);
+        } else {
+          setProcessedImage("");
+        }
       } else {
         setProcessedImage("");
       }
 
+      await refreshAlerts();
+
       navigate("/reports");
     } catch (err) {
       setError(
-        "Assessment failed. Check that the backend server is running. " +
-          err.message
+        "Assessment failed. Check that the backend is running. " + err.message
       );
     } finally {
       setLoading(false);
     }
   }
 
+  /* Logout */
+
   function logout() {
     sessionStorage.removeItem("suraksha_token");
     sessionStorage.removeItem("suraksha_user");
+
+    if (preview) URL.revokeObjectURL(preview);
+    if (processedImage) URL.revokeObjectURL(processedImage);
 
     setToken("");
     setUser(null);
@@ -924,9 +1115,13 @@ function App() {
     setImage(null);
     setPreview("");
     setProcessedImage("");
+    setAlerts([]);
+    setUnreadCount(0);
 
     navigate("/");
   }
+
+  /* Login */
 
   function handleLogin(accessToken, account) {
     sessionStorage.setItem("suraksha_token", accessToken);
@@ -943,29 +1138,30 @@ function App() {
   const analysis = {
     image,
     preview,
-    result,
-    processedImage,
     loading,
     error,
-    rainfall,
-    windSpeed,
-    temperature,
-    setRainfall,
-    setWindSpeed,
-    setTemperature,
     handleImageChange,
     analyzeSite,
   };
 
   return (
     <div className="app-shell">
-      <Sidebar onLogout={logout} user={user} />
+      <Sidebar
+        onLogout={logout}
+        user={user}
+        unreadCount={unreadCount}
+      />
 
       <main className="workspace">
         <Routes>
           <Route
             path="/"
-            element={<Dashboard result={result} />}
+            element={
+              <Dashboard
+                result={result}
+                unreadCount={unreadCount}
+              />
+            }
           />
 
           <Route
@@ -974,8 +1170,15 @@ function App() {
           />
 
           <Route
-            path="/environment"
-            element={<EnvironmentPage analysis={analysis} />}
+            path="/alerts"
+            element={
+              <AlertCenter
+                alerts={alerts}
+                unreadCount={unreadCount}
+                refreshAlerts={refreshAlerts}
+                token={token}
+              />
+            }
           />
 
           <Route
@@ -985,13 +1188,15 @@ function App() {
 
           <Route
             path="/reports"
-            element={<ReportsPage result={result} />}
+            element={
+              <ReportsPage
+                result={result}
+                processedImage={processedImage}
+              />
+            }
           />
 
-          <Route
-            path="*"
-            element={<Navigate to="/" replace />}
-          />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 
         <footer className="workspace-footer">
