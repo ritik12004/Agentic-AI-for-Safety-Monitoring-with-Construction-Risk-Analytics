@@ -8,7 +8,7 @@ from pathlib import Path
 import jwt
 from dotenv import load_dotenv
 from fastapi import (
-    Depends, FastAPI, File, Form, HTTPException, UploadFile
+    Depends, FastAPI, File, HTTPException, UploadFile
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -18,7 +18,6 @@ from ultralytics import YOLO
 
 from site_risk_agent import run_site_risk_agent
 from compliance_agent import run_compliance_agent
-from safety_file import run_safety_workflow
 from backend.app_safety import run_safety_graph
 
 from db import (
@@ -32,6 +31,8 @@ from db import (
     save_notifications,
     list_notifications,
     update_notification_status,
+    save_ppe_events,
+    list_ppe_events,
 )
 
 from gemini_agent import generate_safety_explanation
@@ -94,11 +95,13 @@ def make_access_token(user_id: int, role: str) -> str:
     expires_at = datetime.now(timezone.utc) + timedelta(
         minutes=ACCESS_TOKEN_MINUTES
     )
+
     payload = {
         "sub": str(user_id),
         "role": role,
         "exp": expires_at,
     }
+
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -111,7 +114,9 @@ def get_current_user(
             SECRET_KEY,
             algorithms=[ALGORITHM],
         )
+
         user_id = int(payload["sub"])
+
     except (
         jwt.InvalidTokenError,
         KeyError,
@@ -145,13 +150,19 @@ def get_current_user(
 
 def require_admin(user=Depends(get_current_user)):
     if user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required.")
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required."
+        )
+
     return user
 
 
 @app.get("/")
 def home():
-    return {"message": "Construction Safety Monitoring API is running"}
+    return {
+        "message": "Construction Safety Monitoring API is running"
+    }
 
 
 @app.post("/auth/signup", status_code=201)
@@ -160,10 +171,16 @@ def signup(data: SignupRequest):
     email = data.email.strip().lower()
 
     if not name or not email:
-        raise HTTPException(status_code=400, detail="Name and email are required.")
+        raise HTTPException(
+            status_code=400,
+            detail="Name and email are required."
+        )
 
     if email == "admin":
-        raise HTTPException(status_code=400, detail="This username is reserved.")
+        raise HTTPException(
+            status_code=400,
+            detail="This username is reserved."
+        )
 
     try:
         user = create_user(
@@ -172,8 +189,12 @@ def signup(data: SignupRequest):
             password=data.password,
             role="user",
         )
+
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=409,
+            detail=str(exc)
+        ) from exc
 
     return {
         "message": "Account created. You can now log in.",
@@ -189,7 +210,10 @@ def login(data: LoginRequest):
     if (
         user is None
         or not user.is_active
-        or not verify_user_password(data.password, user.password_hash)
+        or not verify_user_password(
+            data.password,
+            user.password_hash
+        )
     ):
         raise HTTPException(
             status_code=401,
@@ -216,15 +240,24 @@ def get_my_account(user=Depends(get_current_user)):
     return {"user": user}
 
 
+# --------------------------------------------------
+# SITE RISK + PPE DETECTION
+# --------------------------------------------------
+
 @app.post("/detect")
 async def detect_hazards(
     current_user=Depends(get_current_user),
     file: UploadFile = File(...),
 ):
-    allowed_types = {"image/jpeg", "image/png", "image/webp"}
+    allowed_types = {
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+    }
 
     if file.content_type not in allowed_types:
         await file.close()
+
         raise HTTPException(
             status_code=400,
             detail="Please upload a JPG, PNG, or WEBP image.",
@@ -260,26 +293,35 @@ async def detect_hazards(
 
         for box in result.boxes:
             class_id = int(box.cls[0].item())
+
             detections.append({
                 "class": model.names[class_id],
-                "confidence": round(float(box.conf[0].item()), 3),
+                "confidence": round(
+                    float(box.conf[0].item()), 3
+                ),
             })
 
         environmental_data = None
 
         try:
+            # Existing Milestone 1 agents
             agent_result = run_site_risk_agent(
                 detections,
                 environmental_data=environmental_data,
             )
 
             compliance_result = run_compliance_agent(detections)
-            safety_workflow_result = run_safety_workflow(detections)
+
+            # Run Safety Agent graph only once
             day3_safety_result = run_safety_graph(detections)
 
         except (ValueError, TypeError) as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=422,
+                detail=str(exc)
+            ) from exc
 
+        # Preserve existing assessment storage
         save_assessment(
             image_id,
             environmental_data,
@@ -288,15 +330,29 @@ async def detect_hazards(
             compliance_result,
         )
 
-        safety_result = day3_safety_result.get("safety_result", {})
+        # Extract PPE events and alerts
+        safety_result = day3_safety_result.get(
+            "safety_result", {}
+        )
+
+        generated_events = safety_result.get("events", [])
         generated_alerts = safety_result.get("alerts", [])
 
+        # Milestone 2: Permanently save PPE events
+        save_ppe_events(
+            user_id=current_user["id"],
+            image_id=image_id,
+            events=generated_events,
+        )
+
+        # Preserve existing notification system
         save_notifications(
             user_id=current_user["id"],
             image_id=image_id,
             alerts=generated_alerts,
         )
 
+        # Existing Gemini explanation
         gemini_result = generate_safety_explanation(
             detections=detections,
             risk_analysis=agent_result["risk_analysis"],
@@ -310,22 +366,34 @@ async def detect_hazards(
             "risk_analysis": agent_result["risk_analysis"],
             "agent": agent_result,
             "compliance": compliance_result,
-            "safety_workflow": safety_workflow_result,
+
+            # Keep both keys for frontend compatibility
+            "safety_workflow": day3_safety_result,
             "day3_safety_workflow": day3_safety_result,
+
+            "ppe_events": generated_events,
+            "ppe_event_count": len(generated_events),
+
             "gemini_analysis": gemini_result,
             "result_image": f"/result/{image_id}",
         }
 
     except HTTPException:
         raise
+
     except Exception as exc:
         raise HTTPException(
             status_code=500,
             detail=f"Detection failed: {str(exc)}",
         ) from exc
+
     finally:
         await file.close()
 
+
+# --------------------------------------------------
+# EXISTING ASSESSMENTS
+# --------------------------------------------------
 
 @app.get("/assessments")
 def get_assessments(
@@ -335,6 +403,10 @@ def get_assessments(
     return list_assessments(min(max(limit, 1), 200))
 
 
+# --------------------------------------------------
+# EXISTING ALERTS
+# --------------------------------------------------
+
 @app.get("/alerts")
 def get_my_alerts(current_user=Depends(get_current_user)):
     alerts = list_notifications(current_user["id"])
@@ -342,7 +414,8 @@ def get_my_alerts(current_user=Depends(get_current_user)):
     return {
         "alerts": alerts,
         "unread_count": sum(
-            1 for alert in alerts if alert["status"] == "Unread"
+            1 for alert in alerts
+            if alert["status"] == "Unread"
         ),
     }
 
@@ -366,10 +439,44 @@ def update_my_alert(
     )
 
     if not updated:
-        raise HTTPException(status_code=404, detail="Alert not found.")
+        raise HTTPException(
+            status_code=404,
+            detail="Alert not found."
+        )
 
-    return {"message": "Alert status updated.", "status": data.status}
+    return {
+        "message": "Alert status updated.",
+        "status": data.status,
+    }
 
+
+# --------------------------------------------------
+# MILESTONE 2: PPE EVENTS API
+# --------------------------------------------------
+
+@app.get("/ppe-events")
+def get_my_ppe_events(
+    limit: int = 100,
+    current_user=Depends(get_current_user),
+):
+    events = list_ppe_events(
+        user_id=current_user["id"],
+        limit=min(max(limit, 1), 500),
+    )
+
+    return {
+        "events": events,
+        "total_events": len(events),
+        "note": (
+            "PPE detections are AI-generated observations. "
+            "Human review is required before confirming violations."
+        ),
+    }
+
+
+# --------------------------------------------------
+# EXISTING RESULT IMAGE
+# --------------------------------------------------
 
 @app.get("/result/{image_id}")
 def get_result(
@@ -377,11 +484,20 @@ def get_result(
     current_user=Depends(get_current_user),
 ):
     if not image_id.isalnum():
-        raise HTTPException(status_code=400, detail="Invalid image ID")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid image ID"
+        )
 
     result_path = RESULT_DIR / f"{image_id}.jpg"
 
     if not result_path.is_file():
-        raise HTTPException(status_code=404, detail="Result image not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Result image not found"
+        )
 
-    return FileResponse(result_path, media_type="image/jpeg")
+    return FileResponse(
+        result_path,
+        media_type="image/jpeg"
+    )

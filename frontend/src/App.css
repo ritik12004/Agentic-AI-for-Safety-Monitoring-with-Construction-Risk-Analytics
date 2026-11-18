@@ -1238,3 +1238,445 @@ button:not(.logout-button):hover:not(:disabled) {
     padding: 15px;
   }
 }
+
+/* ================================
+   WORKER SAFETY ANALYTICS
+================================ */
+
+.analytics-bar-item {
+  margin: 22px 0;
+}
+
+.analytics-bar-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 9px;
+  font-size: 16px;
+}
+
+.analytics-bar-track {
+  width: 100%;
+  height: 13px;
+  background: #e9edf2;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.analytics-bar-fill {
+  height: 100%;
+  background: #2475d0;
+  border-radius: 20px;
+  transition: width 0.3s ease;
+}
+
+.analytics-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.analytics-status-grid > div {
+  padding: 22px;
+  border: 1px solid #e5eaf0;
+  border-radius: 12px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.analytics-status-grid strong {
+  font-size: 28px;
+}
+
+.analytics-status-grid span {
+  font-size: 15px;
+}
+
+/* Dashboard font sizes */
+
+.nav-link {
+  font-size: 16px;
+}
+
+.sidebar-label {
+  font-size: 13px;
+}
+
+.sidebar-brand h2 {
+  font-size: 23px;
+}
+
+.sidebar-brand p {
+  font-size: 14px;
+}
+
+.admin-details strong {
+  font-size: 15px;
+}
+
+.admin-details p {
+  font-size: 13px;
+}
+
+.page-heading p {
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.page-heading h1 {
+  font-size: 38px;
+}
+
+.stat span {
+  font-size: 15px;
+}
+
+.stat p {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.stat h2 {
+  font-size: 30px;
+}
+
+.panel h2 {
+  font-size: 23px;
+}
+
+.panel h3 {
+  font-size: 19px;
+}
+
+.panel p {
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.detection strong {
+  font-size: 16px;
+}
+
+.detection p {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Login font sizes */
+
+.login-card h1 {
+  font-size: 30px;
+}
+
+.login-card .login-description {
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.login-card .environment-field {
+  font-size: 15px;
+}
+
+.login-card input {
+  font-size: 16px;
+  min-height: 46px;
+}
+
+.login-card > button {
+  font-size: 17px;
+  min-height: 48px;
+}
+
+.login-card .note,
+.login-card .error {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Mobile responsive */
+
+@media (max-width: 700px) {
+  .analytics-status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-heading h1 {
+    font-size: 29px;
+  }
+
+  .page-heading p {
+    font-size: 15px;
+  }
+
+  .panel h2 {
+    font-size: 20px;
+  }
+
+  .panel p {
+    font-size: 15px;
+  }
+
+  .stat h2 {
+    font-size: 25px;
+  }
+
+  .login-card h1 {
+    font-size: 26px;
+  }
+}
+/* =================================
+   WORKER SAFETY ANALYTICS
+================================= */
+
+.analytics-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.analytics-section {
+  margin-bottom: 24px;
+}
+
+.analytics-section h2 {
+  font-size: 22px;
+  margin-bottom: 18px;
+  color: #172b4d;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.analytics-card {
+  background: #ffffff;
+  border: 1px solid #e5eaf1;
+  border-radius: 14px;
+  padding: 22px;
+  min-width: 0;
+}
+
+.analytics-card h3 {
+  font-size: 18px;
+  margin: 0 0 18px;
+  color: #172b4d;
+}
+
+.analytics-bar-item {
+  margin-bottom: 18px;
+}
+
+.analytics-bar-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #344563;
+}
+
+.analytics-bar-heading strong {
+  color: #172b4d;
+  font-size: 14px;
+}
+
+.analytics-bar-track {
+  width: 100%;
+  height: 10px;
+  background: #edf1f6;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.analytics-bar-fill {
+  height: 100%;
+  border-radius: 20px;
+  background: #2563eb;
+  transition: width 0.3s ease;
+}
+
+.analytics-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.analytics-status-item {
+  padding: 16px;
+  background: #f7f9fc;
+  border: 1px solid #e8edf4;
+  border-radius: 10px;
+}
+
+.analytics-status-item span {
+  display: block;
+  color: #64748b;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.analytics-status-item strong {
+  display: block;
+  color: #172b4d;
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.analytics-note {
+  padding: 14px 16px;
+  margin-top: 18px;
+  border-left: 4px solid #e5a000;
+  background: #fff9e8;
+  color: #795b12;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.analytics-empty {
+  padding: 24px;
+  text-align: center;
+  color: #64748b;
+  background: #f8fafc;
+  border-radius: 10px;
+}
+
+/* =================================
+   LARGER DASHBOARD TEXT
+================================= */
+
+.nav-link {
+  font-size: 16px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.page-heading h1 {
+  font-size: 32px;
+}
+
+.page-heading p {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.stat > span {
+  font-size: 14px;
+}
+
+.stat h2 {
+  font-size: 29px;
+}
+
+.stat p {
+  font-size: 14px;
+}
+
+.panel h2 {
+  font-size: 22px;
+}
+
+.panel p {
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.detection strong {
+  font-size: 15px;
+}
+
+.detection p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* =================================
+   LARGER LOGIN TEXT
+================================= */
+
+.login-card h1 {
+  font-size: 30px;
+  line-height: 1.3;
+}
+
+.login-description {
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.login-card label {
+  font-size: 15px;
+}
+
+.login-card input {
+  font-size: 16px;
+  min-height: 48px;
+}
+
+.login-card button[type="submit"] {
+  font-size: 16px;
+  min-height: 48px;
+}
+
+.login-card .note {
+  font-size: 14px;
+}
+
+/* =================================
+   RESPONSIVE ANALYTICS
+================================= */
+
+@media (max-width: 1050px) {
+  .analytics-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .analytics-card {
+    padding: 16px;
+  }
+
+  .analytics-section h2 {
+    font-size: 19px;
+  }
+
+  .page-heading h1 {
+    font-size: 26px;
+  }
+
+  .stat h2 {
+    font-size: 24px;
+  }
+
+  .login-card h1 {
+    font-size: 25px;
+  }
+}
+
+@media (max-width: 380px) {
+  .analytics-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-status-grid {
+    grid-template-columns: 1fr;
+  }
+}

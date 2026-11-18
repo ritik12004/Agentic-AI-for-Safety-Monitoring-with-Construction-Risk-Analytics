@@ -58,20 +58,25 @@ def run_safety_agent(detections):
         event_id = str(uuid4())
         timestamp = datetime.now(timezone.utc).isoformat()
 
+        confidence_score = round(float(confidence), 3)
+
+        # Create PPE Violation Event
         event = {
             "event_id": event_id,
             "event_type": "ppe_violation",
             "class": label,
             "message": MISSING_PPE_CLASSES[label],
-            "confidence": round(float(confidence), 3),
+            "confidence": confidence_score,
             "timestamp": timestamp,
             "requires_human_review": True,
         }
 
+        # Create Safety Alert
         alert = {
             "alert_id": str(uuid4()),
             "event_id": event_id,
             "message": MISSING_PPE_CLASSES[label],
+            "confidence": confidence_score,
             "status": "Open",
             "timestamp": timestamp,
             "requires_human_review": True,

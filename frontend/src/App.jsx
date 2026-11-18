@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import {
   Navigate,
@@ -186,6 +185,7 @@ function Sidebar({ onLogout, user, unreadCount }) {
     { to: "/", label: "Dashboard", icon: "▦" },
     { to: "/monitoring", label: "Site Monitoring", icon: "⌕" },
     { to: "/alerts", label: "Smart Alert Center", icon: "🔔" },
+    { to: "/worker-safety", label: "Worker Safety Analytics", icon: "▥" },
     { to: "/compliance", label: "Safety & Compliance", icon: "✓" },
     { to: "/reports", label: "Assessment Results", icon: "▤" },
   ];
@@ -678,6 +678,170 @@ function AlertCenter({ alerts, unreadCount, refreshAlerts, token }) {
 }
 
 /* ================================
+   WORKER SAFETY ANALYTICS
+================================ */
+
+function WorkerSafetyAnalytics({ events, loading, error, refreshPpeEvents }) {
+  const getClass = (event) =>
+    String(event.class || event.event_type || event.message || "").toLowerCase();
+
+  const countFor = (terms) =>
+    events.filter((event) =>
+      terms.some((term) => getClass(event).includes(term))
+    ).length;
+
+  const confidenceValues = events
+    .map((event) => Number(event.confidence))
+    .filter((value) => Number.isFinite(value));
+
+  const averageConfidence = confidenceValues.length
+    ? confidenceValues.reduce((sum, value) => sum + value, 0) /
+      confidenceValues.length
+    : null;
+
+  const recentEvents = [...events]
+    .sort(
+      (a, b) =>
+        new Date(b.timestamp || b.created_at || 0) -
+        new Date(a.timestamp || a.created_at || 0)
+    )
+    .slice(0, 10);
+
+  return (
+    <>
+      <PageHeader
+        title="Worker Safety Analytics"
+        subtitle="A summary of saved PPE-related detection events for the signed-in user."
+      />
+
+      <section className="stats">
+        <StatCard
+          label="Total PPE Events"
+          value={events.length}
+          detail="Persisted event records"
+        />
+
+        <StatCard
+          label="Hardhat Concerns"
+          value={countFor(["hardhat", "helmet"])}
+          detail="Possible missing hardhat"
+        />
+
+        <StatCard
+          label="Safety Vest Concerns"
+          value={countFor(["safety vest", "vest"])}
+          detail="Possible missing vest"
+        />
+
+        <StatCard
+          label="Mask Concerns"
+          value={countFor(["mask"])}
+          detail="Possible missing mask"
+        />
+      </section>
+
+      <section className="panel">
+        <div className="panel-action-row">
+          <h2>Analytics Overview</h2>
+
+          <button
+            type="button"
+            onClick={refreshPpeEvents}
+            disabled={loading}
+          >
+            {loading ? "Refreshing..." : "↻ Refresh"}
+          </button>
+        </div>
+
+        {error && <p className="error">{error}</p>}
+
+        <p>
+          Average detection confidence:{" "}
+          {averageConfidence === null
+            ? "Not available"
+            : `${(averageConfidence * 100).toFixed(1)}%`}
+        </p>
+
+        <p>
+          Events requiring human review:{" "}
+          {
+            events.filter(
+              (event) => event.requires_human_review !== false
+            ).length
+          }
+        </p>
+
+        <p className="note">
+          These metrics are based on saved AI-generated PPE event records.
+          They do not identify individual workers, prove a safety violation,
+          or represent worker-wise performance. A qualified person must review
+          each observation.
+        </p>
+      </section>
+
+      <section className="panel">
+        <h2>Recent PPE Events</h2>
+
+        {loading && events.length === 0 ? (
+          <p>Loading saved PPE events...</p>
+        ) : events.length === 0 ? (
+          <p>
+            No PPE events have been saved for this account yet. Run a site
+            image assessment to generate events.
+          </p>
+        ) : (
+          recentEvents.map((event, index) => (
+            <div
+              className="detection"
+              key={
+                event.event_id ||
+                event.id ||
+                `${event.image_id || "event"}-${index}`
+              }
+            >
+              <div>
+                <strong>
+                  {event.class || event.event_type || "PPE observation"}
+                </strong>
+
+                <p>
+                  {event.message ||
+                    "Potential PPE concern detected; manual review required."}
+                </p>
+
+                <p>
+                  Confidence:{" "}
+                  {Number.isFinite(Number(event.confidence))
+                    ? `${(Number(event.confidence) * 100).toFixed(1)}%`
+                    : "Not available"}
+                </p>
+
+                <p>Assessment ID: {event.image_id || "Not available"}</p>
+
+                <p>
+                  Review:{" "}
+                  {event.requires_human_review === false
+                    ? "Not flagged for review"
+                    : "Human review required"}
+                </p>
+
+                <p>
+                  {event.timestamp || event.created_at
+                    ? new Date(
+                        event.timestamp || event.created_at
+                      ).toLocaleString()
+                    : "Date unavailable"}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
+      </section>
+    </>
+  );
+}
+
+/* ================================
    SAFETY WORKFLOW
 ================================ */
 
@@ -694,6 +858,7 @@ function SafetyWorkflow({ result }) {
         <>
           <div className="risk-card">
             <span>LangGraph Final Decision</span>
+
             <h2>
               {workflow.decision?.replaceAll("_", " ") || "Unavailable"}
             </h2>
@@ -712,6 +877,7 @@ function SafetyWorkflow({ result }) {
               <strong>YOLOv8 Prediction</strong>
               <p>Image detection results received.</p>
             </div>
+
             <strong>Completed</strong>
           </div>
 
@@ -720,12 +886,14 @@ function SafetyWorkflow({ result }) {
               <strong>Safety Agent Analysis</strong>
               <p>Safety findings processed.</p>
             </div>
+
             <strong>Completed</strong>
           </div>
 
           <div className="detection">
             <div>
               <strong>LangGraph Conditional Routing</strong>
+
               <p>
                 {workflow.decision === "pending_safety_review"
                   ? "Findings returned for safety review."
@@ -803,6 +971,7 @@ function ReportsPage({ result, processedImage }) {
       {!result ? (
         <section className="panel">
           <h2>No Assessment Available</h2>
+
           <p>
             Upload a construction site image from Site Monitoring to generate
             assessment results.
@@ -900,12 +1069,15 @@ function ReportsPage({ result, processedImage }) {
                   <div className="detection" key={`${item.hazard}-${index}`}>
                     <div>
                       <strong>{item.hazard}</strong>
+
                       <p>Severity: {item.severity}</p>
                       <p>Detection count: {item.count}</p>
+
                       <p>
                         Highest confidence:{" "}
                         {(item.highestConfidence * 100).toFixed(1)}%
                       </p>
+
                       {item.recommendation && <p>{item.recommendation}</p>}
                     </div>
                   </div>
@@ -930,6 +1102,7 @@ function ReportsPage({ result, processedImage }) {
             {recommendations.length > 0 && (
               <>
                 <h3>Recommendations</h3>
+
                 <ul>
                   {recommendations.map((item, index) => (
                     <li key={index}>{item}</li>
@@ -978,6 +1151,9 @@ function App() {
 
   const [alerts, setAlerts] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [ppeEvents, setPpeEvents] = useState([]);
+  const [ppeLoading, setPpeLoading] = useState(false);
+  const [ppeError, setPpeError] = useState("");
 
   const navigate = useNavigate();
 
@@ -1015,6 +1191,36 @@ function App() {
         console.error("Alert loading error:", err);
       });
     }
+  }, [token]);
+
+  async function refreshPpeEvents() {
+    if (!token) return;
+
+    setPpeLoading(true);
+    setPpeError("");
+
+    try {
+      const response = await fetch(`${API}/ppe-events`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Could not load PPE events.");
+      }
+
+      setPpeEvents(Array.isArray(data.events) ? data.events : []);
+    } catch (err) {
+      setPpeError(err.message || "Could not load PPE events.");
+    } finally {
+      setPpeLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (token) refreshPpeEvents();
   }, [token]);
 
   /* Image selection */
@@ -1088,7 +1294,7 @@ function App() {
         setProcessedImage("");
       }
 
-      await refreshAlerts();
+      await Promise.all([refreshAlerts(), refreshPpeEvents()]);
 
       navigate("/reports");
     } catch (err) {
@@ -1117,6 +1323,8 @@ function App() {
     setProcessedImage("");
     setAlerts([]);
     setUnreadCount(0);
+    setPpeEvents([]);
+    setPpeError("");
 
     navigate("/");
   }
@@ -1177,6 +1385,18 @@ function App() {
                 unreadCount={unreadCount}
                 refreshAlerts={refreshAlerts}
                 token={token}
+              />
+            }
+          />
+
+          <Route
+            path="/worker-safety"
+            element={
+              <WorkerSafetyAnalytics
+                events={ppeEvents}
+                loading={ppeLoading}
+                error={ppeError}
+                refreshPpeEvents={refreshPpeEvents}
               />
             }
           />
